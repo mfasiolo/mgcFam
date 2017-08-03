@@ -674,7 +674,7 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
     return( q)
   }
   
-  pf <- function(q, mu, wt, scale) {
+  cdf <- function(q, mu, wt, scale, logp) {
     mu <- as.matrix(mu)
     if(ncol(mu)==1){ mu <- t(mu) }
     muE <- mu[ , 1]
@@ -682,9 +682,7 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
     epsE <- mu[ , 3]
     delE <- exp(mu[ , 4])
     
-    #q <- muE + (delE * sigE) * sinh((1/delE) * asinh(qnorm(p)) + (epsE/delE))
-    
-    p <- pnorm( sinh((asinh( (q-muE)/(delE * sigE) )  - epsE/delE) * delE) )
+    p <- pnorm( sinh((asinh( (q-muE)/(delE * sigE) )  - epsE/delE) * delE), log.p = logp )
     
     return( p )
   }
@@ -697,7 +695,7 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
                  residuals=residuals,
                  rd=rd,
                  qf=qf,
-                 pf=pf,
+                 cdf=cdf,
                  #predict=predict,
                  linfo = stats, ## link information list
                  d2link=1,d3link=1,d4link=1, ## signals to fix.family.link that all done    
