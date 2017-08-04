@@ -620,7 +620,6 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
       #ne1 <- norm(e1); if (ne1==0) ne1 <- 1
       # 1) Ridge regression for the location parameter
       if (use.unscaled) {
-        qrx <- qr(rbind(x1, e1))
         x1 <- rbind(x1, e1)
         startMu <- qr.coef(qr(x1), c(yt1,rep(0,nrow(E))))
         startMu[ !is.finite(startMu) ] <- 0       
