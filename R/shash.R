@@ -40,7 +40,7 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
                                        paste("function(mu) { em<-exp(mu); b<-",b,"; -b*em*(b^2+4*b*em+em^2)/(em-b)^4 }",sep='')))
   } else stop(link[[2]]," link not available for scale parameter of shash")
   
-  # phi=log(delta) uses the link: eta = logit( (phi-a1)/a2 )
+  # phi=log(delta) uses the link: eta = logit( (phi-a1)/(a2-a1) )
   if (link[[4]] %in% okLinks[[4]]) { ## creating the logeb link
     stats[[4]] <- list()
     stats[[4]]$valideta <- function(eta) TRUE 
