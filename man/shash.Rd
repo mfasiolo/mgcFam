@@ -30,7 +30,7 @@ The density function of the shash family is
 ##########
 ## Motorcycle example
 ##########
-library(mgcv); library(MASS)
+library(mgcFam); library(MASS)
 
 b <- gam(list(accel~s(times,k=20),~s(times),~s(times),~s(times)),
          data=mcycle,family=shash(b=0.01))
