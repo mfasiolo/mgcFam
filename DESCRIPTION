@@ -1,5 +1,5 @@
 Package: mgcFam
-Title: Extra Families for mgcv.
+Title: Extra Families for mgcv
 Version: 0.0.1
 Authors@R: c(person("Matteo", "Fasiolo", email = "matteo.fasiolo@gmail.com", role = c("aut", "cre")),
   person("Simon", "Wood", role = c("aut")))

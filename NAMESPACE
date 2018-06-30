@@ -1,3 +1,7 @@
 #useDynLib("mgcFam", .registration = TRUE)
 
 export("shash")
+
+importFrom("stats", "make.link", "pnorm", "qnorm", "runif")
+
+importFrom("mgcv", "fix.family.link", "gamlss.etamu", "gamlss.gH", "trind.generator")
