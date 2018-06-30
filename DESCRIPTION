@@ -4,8 +4,7 @@ Version: 0.0.1
 Authors@R: c(person("Matteo", "Fasiolo", email = "matteo.fasiolo@gmail.com", role = c("aut", "cre")),
   person("Simon", "Wood", role = c("aut")))
 Description: Extra families for mgcv.
-Depends: R (>= 3.3.2), 
-         mgcv
+Depends: mgcv
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
