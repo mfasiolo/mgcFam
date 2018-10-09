@@ -63,10 +63,10 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
   
   residuals <- function(object, type = c("deviance", "response")) {
     
-    mu <-  object$fitted[ , 1]
-    tau <- object$fitted[ , 2]
-    eps <- object$fitted[ , 3]
-    phi <- object$fitted[ , 4]
+    mu <-  object$fitted[ , 1, drop = TRUE]
+    tau <- object$fitted[ , 2, drop = TRUE]
+    eps <- object$fitted[ , 3, drop = TRUE]
+    phi <- object$fitted[ , 4, drop = TRUE]
     
     sig <- exp( tau )
     del <- exp( phi )
@@ -114,10 +114,10 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
     
     jj <- attr(X, "lpi") ## extract linear predictor index
     
-    eta <-  X[ , jj[[1]], drop=FALSE] %*% coef[jj[[1]]]
-    eta1 <- X[ , jj[[2]], drop=FALSE] %*% coef[jj[[2]]]
-    eta2 <- X[ , jj[[3]], drop=FALSE] %*% coef[jj[[3]]]
-    eta3 <- X[ , jj[[4]], drop=FALSE] %*% coef[jj[[4]]]
+    eta <-  drop( X[ , jj[[1]], drop=FALSE] %*% coef[jj[[1]]] )
+    eta1 <- drop( X[ , jj[[2]], drop=FALSE] %*% coef[jj[[2]]] )
+    eta2 <- drop( X[ , jj[[3]], drop=FALSE] %*% coef[jj[[3]]] )
+    eta3 <- drop( X[ , jj[[4]], drop=FALSE] %*% coef[jj[[4]]] )
     
     mu <-  family$linfo[[1]]$linkinv( eta )
     tau <- family$linfo[[2]]$linkinv( eta1 )
@@ -627,7 +627,7 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
       start[jj[[1]]] <- startMu
       
       # 2) Ridge regression using log absolute residuals
-      lres1 <- log( abs(y-family$linfo[[1]]$linkinv(x[,jj[[1]],drop=FALSE]%*%startMu)) )
+      lres1 <- log( abs(y-drop(family$linfo[[1]]$linkinv(x[,jj[[1]],drop=FALSE]%*%startMu))) )
       x1 <-  x[,jj[[2]],drop=FALSE]; e1 <- E[,jj[[2]],drop=FALSE]
       #ne1 <- norm(e1); if (ne1==0) ne1 <- 1
       if (use.unscaled) {
@@ -649,10 +649,10 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
   rd <- function(mu, wt, scale) { 
     mu <- as.matrix(mu)
     if(ncol(mu)==1){ mu <- t(mu) }
-    muE <- mu[ , 1]
-    sigE <- exp(mu[ , 2])
-    epsE <- mu[ , 3]
-    delE <- exp(mu[ , 4])
+    muE <- mu[ , 1, drop = TRUE]
+    sigE <- exp(mu[ , 2, drop = TRUE])
+    epsE <- mu[ , 3, drop = TRUE]
+    delE <- exp(mu[ , 4, drop = TRUE])
     n <- length(muE)
     
     .r <- muE + (delE * sigE) * sinh((1/delE) * asinh(qnorm(runif(n))) + (epsE/delE))
@@ -663,10 +663,10 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
   qf <- function(p, mu, wt, scale) {
     mu <- as.matrix(mu)
     if(ncol(mu)==1){ mu <- t(mu) }
-    muE <- mu[ , 1]
-    sigE <- exp(mu[ , 2])
-    epsE <- mu[ , 3]
-    delE <- exp(mu[ , 4])
+    muE <- mu[ , 1, drop = TRUE]
+    sigE <- exp(mu[ , 2, drop = TRUE])
+    epsE <- mu[ , 3, drop = TRUE]
+    delE <- exp(mu[ , 4, drop = TRUE])
     
     q <- muE + (delE * sigE) * sinh((1/delE) * asinh(qnorm(p)) + (epsE/delE))
     
@@ -676,10 +676,10 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
   cdf <- function(q, mu, wt, scale, logp) {
     mu <- as.matrix(mu)
     if(ncol(mu)==1){ mu <- t(mu) }
-    muE <- mu[ , 1]
-    sigE <- exp(mu[ , 2])
-    epsE <- mu[ , 3]
-    delE <- exp(mu[ , 4])
+    muE <- mu[ , 1, drop = TRUE]
+    sigE <- exp(mu[ , 2, drop = TRUE])
+    epsE <- mu[ , 3, drop = TRUE]
+    delE <- exp(mu[ , 4, drop = TRUE])
     
     p <- pnorm( sinh((asinh( (q-muE)/(delE * sigE) )  - epsE/delE) * delE), log.p = logp )
     
