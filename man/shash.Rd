@@ -7,7 +7,8 @@ shash(link = list("identity", "logeb", "identity", "identity"),
 }
 \arguments{
 \item{link}{vector of four characters indicating the link function for location, scale, skewness and kurtosis parameters.}
-\item{phiPen}{positive multiplier of a ridge penalty on kurtosis parameter. Do not touch it unless you know what you are doing.}
+\item{b}{positive parameter of the logeb link function, see Details.}
+\item{phiPen}{positive multiplier of a ridge penalty on kurtosis parameter. Do not touch it unless you know what you are doing, see Details.}
 }
 \value{
 An object inheriting from class general.family.
