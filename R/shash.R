@@ -1,17 +1,15 @@
 
 # Added shash
-shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0.01, a1 = -10, a2 = 1) 
+shash <- function(link = list("identity", "logeb", "identity", "identity"), b = 1e-2, phiPen = 1e-3) 
 { 
   sech <- function(.x){ 1 / cosh(.x) }
-  
-  if(a2 < a1){ stop("a2 must be >= a1") }
-  
+
   npar <- 4
   if (length(link) != npar) stop("shash requires 4 links specified as character strings")
-  okLinks <- list("identity", "logeb", "identity", "slogit")
+  okLinks <- list("identity", "logeb", "identity", "identity")
   stats <- list()
   param.names <- c("mu", "tau", "eps", "phi")
-  for (i in c(1, 3)) { # Links for mu, eps and phi
+  for (i in c(1, 3, 4)) { # Links for mu, eps and phi
     if (link[[i]] %in% okLinks[[i]]) stats[[i]] <- make.link(link[[i]]) else 
       stop(link[[i]]," link not available for ", param.names[i]," parameter of shashlss")
     fam <- structure(list(link=link[[i]],canonical="none",linkfun=stats[[i]]$linkfun,
@@ -39,23 +37,6 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
     stats[[2]]$d4link <-  eval(parse(text=
                                        paste("function(mu) { em<-exp(mu); b<-",b,"; -b*em*(b^2+4*b*em+em^2)/(em-b)^4 }",sep='')))
   } else stop(link[[2]]," link not available for scale parameter of shash")
-  
-  # phi=log(delta) uses the link: eta = logit( (phi-a1)/(a2-a1) )
-  if (link[[4]] %in% okLinks[[4]]) { ## creating the logeb link
-    stats[[4]] <- list()
-    stats[[4]]$valideta <- function(eta) TRUE 
-    stats[[4]]$link = link[[4]]
-    stats[[4]]$linkfun <- eval(parse(text=paste("function(mu) qlogis((mu - ",a1,")/", (a2-a1),")", sep='')))
-    stats[[4]]$linkinv <- eval(parse(text=paste("function(eta) ", (a2-a1)," * plogis(eta) + ",a1, sep='')))
-    stats[[4]]$mu.eta <- eval(parse(text=paste("function(eta) { oo <- plogis(eta); ", (a2-a1), "*oo*(1-oo) }", sep = '')))
-    stats[[4]]$d2link <-  eval(parse(text=
-                                       paste("function(mu) { z<-(mu-", a1,")/", (a2-a1),";  (1/(1-z)^2-1/z^2)/",(a2-a1),"^2}",sep='')))
-    stats[[4]]$d3link <-  eval(parse(text=
-                                       paste("function(mu) { z<-(mu-", a1,")/", (a2-a1),";  (2/(1-z)^3+2/z^3)/",(a2-a1),"^3}",sep='')))
-    stats[[4]]$d4link <-  eval(parse(text=
-                                       paste("function(mu) { z<-(mu-", a1,")/", (a2-a1),";  (6/(1-z)^4-6/z^4)/",(a2-a1),"^4}",sep='')))
-  } else stop(link[[4]]," link not available for kurtosis parameter of shash")
-  
   
   # variance <- function(mu) exp(get(".Theta"))  ##### XXX ##### Necessary?
   
@@ -88,7 +69,7 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
       CC <- cosh( dTasMe )
       SS <- sinh( dTasMe )
       
-      l <- -tau - 0.5*log(2*pi) + log(CC) - 0.5*log1p(z^2) - 0.5*SS^2
+      l <- - tau - 0.5*log(2*pi) + log(CC) - 0.5*log1p(z^2) - 0.5*SS^2
       
       # By putting ls to zero we are using only log-likelihood
       ls <- 0
@@ -107,12 +88,53 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
     ##        2 - diagonal of first deriv of Hess
     ##        3 - first deriv of Hess
     ##        4 - everything.
-    npar <- 4
     
+    ##### We need some helper functions
+    # Calculates \code{log(1+exp(x))} in a numerically stable fashion.
+    .log1pexp <- function(x)
+    {
+      indx <- .bincode(x, c(-Inf, -37, 18, 33.3, Inf), T)
+      kk <- which(indx==1)
+      if( length(kk) ){  x[kk] <- exp(x[kk])  }
+      kk <- which(indx==2)
+      if( length(kk) ){  x[kk] <- log1p( exp(x[kk]) ) }
+      kk <- which(indx==3)
+      if( length(kk) ){  x[kk] <- x[kk] + exp(-x[kk]) }
+      return(x)
+    }
+    
+    # Compute sqrt(x^2 + m) when |x| >> 0 and m is reasonably small (e.g. + 1 or - 1)
+    .sqrtX2pm <- function(x, m){ 
+      x <- abs(x)
+      kk <- which( x < 1e8 )
+      if( length(kk) ){
+        x[kk] <- sqrt(x[kk]^2 + m)
+      }
+      return(x)
+    }
+    
+    # Compute (a*x^2 + m1) / (x^2 + m2)^2 when |x| >> 0 and m1, m2 are reasonably small (e.g. + 1 or - 1)
+    .ax2m1DivX2m2SQ <- function(x, m1, m2, a = 1){
+      if(a < 0){ stop("'a' has to be positive")  }
+      x <- abs(x)
+      kk <- (a * x^2 + m1) < 0
+      o <- x * 0
+      if( any(kk) ){
+        o[kk] <- (a * x[kk]^2 + m1) / (x[kk]^2 + m2)^2
+      }
+      if( sum(kk) < length(x) ){
+        o[!kk] <- ((.sqrtX2pm(sqrt(a)*x[!kk], m1) / .sqrtX2pm(x[!kk], m2)) / .sqrtX2pm(x[!kk], m2))^2
+      }
+      return(o)
+    }
+  
     # If offset is not null or a vector of zeros, give an error
     if( !is.null(offset[[1]]) && sum(abs(offset)) )  stop("offset not still available for this family")
     
     jj <- attr(X, "lpi") ## extract linear predictor index
+    
+    npar <- 4
+    n <- length(y)
     
     eta <-  drop( X[ , jj[[1]], drop=FALSE] %*% coef[jj[[1]]] )
     eta1 <- drop( X[ , jj[[2]], drop=FALSE] %*% coef[jj[[2]]] )
@@ -127,8 +149,6 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
     sig <- exp( tau )
     del <- exp( phi )
     
-    n <- length(y)
-    
     z <- (y - mu) / (sig*del)
     
     dTasMe <- del*asinh(z) - eps
@@ -136,33 +156,33 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
     CC <- cosh( dTasMe )
     SS <- sinh( dTasMe )
     
-    l <- sum( -tau - 0.5*log(2*pi) + log(CC) - 0.5*log1p(z^2) - 0.5*SS^2 )
-    
+    l <- sum( - tau - 0.5*log(2*pi) + log(CC) - 0.5*.log1pexp(2*log(abs(z))) - 0.5*SS^2 - phiPen*phi^2 ) 
+  
     if (deriv>0) {
       
       zsd <- z*sig*del
-      sSp1 <- sqrt(z^2+1)
+      sSp1 <- .sqrtX2pm(z, 1) # sqrt(z^2+1)
       asinhZ <- asinh(z)
       
-      ## First derivatives
+      ## First derivatives 
       De <- tanh(g) - 0.5*sinh(2*g)
       Dm <- 1/(del*sig*sSp1)*(del*(De)+z/sSp1)
       Dt <- zsd*Dm - 1
-      Dp <- Dt + 1 - del*asinhZ*De
+      Dp <- Dt + 1 - del*asinhZ*De - 2*phiPen*phi
       
       L1 <- cbind(Dm,Dt,De,Dp)
       
       ## the second derivatives  
       Dme <- (sech(g)^2 - cosh(2*g)) / (sig*sSp1)
       Dte <- zsd*Dme
-      Dmm <- Dme/(sig*sSp1) + z*De/(sig^2*del*(z^2+1)^(3/2)) + (z^2-1)/(del*sig*del*sig*(z^2+1)^2)
+      Dmm <- Dme/(sig*sSp1) + z*De/(sig^2*del*sSp1^3) + .ax2m1DivX2m2SQ(z, -1, 1)/(del*sig*del*sig)
       Dmt <- zsd*Dmm - Dm
       Dee <- -2*cosh(g)^2 + sech(g)^2 + 1 
       Dtt <-  zsd*Dmt
       Dep <- Dte - del*asinhZ*Dee
       Dmp <- Dmt + De/(sig*sSp1) - del*asinhZ*Dme
       Dtp <- zsd*Dmp
-      Dpp <- Dtp - del*asinhZ*Dep + del*(z/sSp1-asinhZ)*De
+      Dpp <- Dtp - del*asinhZ*Dep + del*(z/sSp1-asinhZ)*De - 2*phiPen
       
       # Put them in matrix form
       L2 <- cbind(Dmm, Dmt, Dme, Dmp, Dtt, Dte ,Dtp ,Dee ,Dep ,Dpp)  
@@ -181,9 +201,10 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
       ## the third derivatives
       Deee <-  -2*(sinh(2*g)+sech(g)^2*tanh(g))
       Dmee <- Deee/(sig*sSp1)
-      Dmme <- Dmee/(sig*sSp1) + z*Dee/(sig*sig*del*(z^2+1)^(3/2))
+      Dmme <- Dmee/(sig*sSp1) + z*Dee/(sig*sig*del*sSp1^3)
       Dmmm <- 2*z*Dme/(sig*sig*del*sSp1^3) + Dmme/(sig*sSp1) + 
-        (2*z^2-1)*De/(sig^3*del^2*sSp1^5) + 2*z*(z^2-3)/((sig*del)^3*(z^2+1)^3)
+        .ax2m1DivX2m2SQ(z, -1, 1, 2)*De/(sig^3*del^2*sSp1) + 
+        2*(z/sSp1)*.ax2m1DivX2m2SQ(z, -3, 1)/((sig*del)^3*sSp1)
       Dmmt <- zsd*Dmmm - 2*Dmm
       Dtee <- zsd*Dmee
       Dmte <- zsd*Dmme - Dme
@@ -639,12 +660,18 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
       
       # 3) Skewness and kurtosis as for Gaussian density: skewness set to zero (identity link)
       # and log-kurtosis set to zero.
-      start[jj[[3]]] <- 0
-      start[jj[[4]]] <- c(family$linfo[[4]]$linkfun(0), rep(0, length(jj[[4]])-1))}
+      x1 <-  x[ , jj[[3]],drop=FALSE]
+      startji <- qr.coef(qr(x1), c(rep(family$linfo[[3]]$linkfun(0),nrow(x1))))   
+      startji[!is.finite(startji)] <- 0
+      start[jj[[3]]] <- startji
+      
+      x1 <-  x[ , jj[[4]],drop=FALSE]
+      startji <- qr.coef(qr(x1), c(rep(family$linfo[[4]]$linkfun(0),nrow(x1))))   
+      startji[!is.finite(startji)] <- 0
+      start[jj[[4]]] <- startji
+      
+      }
   }) ## initialize 
-  
-  #   postproc <- expression({  ####### XXX ??? #######
-  #   })
   
   rd <- function(mu, wt, scale) { 
     mu <- as.matrix(mu)
@@ -697,7 +724,7 @@ shash <- function (link = list("identity", "logeb", "identity", "slogit"), b = 0
                  cdf=cdf,
                  #predict=predict,
                  linfo = stats, ## link information list
-                 d2link=1,d3link=1,d4link=1, ## signals to fix.family.link that all done    
+                 d2link=1, d3link=1, d4link=1, ## signals to fix.family.link that all done    
                  ls=1, ## signals that ls not needed here
                  available.derivs = 2 ## can use full Newton here
   ),class = c("general.family","extended.family","family"))

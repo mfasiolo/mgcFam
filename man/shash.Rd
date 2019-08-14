@@ -2,14 +2,12 @@
 \alias{shash}
 \title{Sinh-arcsinh model family}
 \usage{
-shash(link = list("identity", "logeb", "identity", "slogit"), 
-      b = 0.01, a1 = -10, a2 = 1)
+shash(link = list("identity", "logeb", "identity", "identity"), 
+      b = 1e-2, phiPen = 1e-3)
 }
 \arguments{
-\item{link}{vector of four characters indicating the link function for location, scale, skewness and kurtosis.}
-\item{b}{positive parameter of the logeb link function, see Details.}
-\item{a1}{parameter of the slogit link function, see Details.}
-\item{a2}{parameter of the slogit link function, see Details.}
+\item{link}{vector of four characters indicating the link function for location, scale, skewness and kurtosis parameters.}
+\item{phiPen}{positive multiplier of a ridge penalty on kurtosis parameter. Do not touch it unless you know what you are doing.}
 }
 \value{
 An object inheriting from class general.family.
@@ -32,10 +30,7 @@ The density function of the shash family is
          
 The link function used for \eqn{\tau} is logeb with is \eqn{\eta = log{exp(\tau)-b}} so that the inverse link is
 \eqn{\tau = log(\sigma) = log{exp(\eta)+b}}. The point is that we are don't allow \eqn{\sigma} to become smaller
-than a small constant b. The link function used for \eqn{\phi} is \eqn{\eta = logit(c)} with \eqn{c = (\phi-a1)/(a2-a1)}, 
-so that the inverse link is \eqn{\phi = log(\delta) = (a2-a1) * logistic(\eta) + a1}. The purpose is keeping 
-\eqn{\delta} between \eqn{exp(a1)} and \eqn{exp(a2)} as the shape of the density becomes insensitive to \eqn{delta} if
-this parameter takes extreme values.
+than a small constant b. The likelihood includes a ridge penalty \eqn{- phiPen * \phi^2}, which shrinks \eqn{\phi} toward zero. When sufficient data is available the ridge penalty does not change the fit much, but it is useful to include it when fitting the model to small data sets, to avoid \eqn{\phi} diverging to +infinity (a problem already identified by Jones and Pewsey (2009)). 
 }
 \examples{
 
@@ -99,6 +94,27 @@ for(qq in c(0.001, 0.01, 0.1, 0.5, 0.9, 0.99, 0.999)){
   lines(x, true, type = 'l', col = 2, lwd = 2, lty = 2)
 }
 legend("topleft", c("estimated", "truth"), col = 1:2, lty = 1:2, lwd = 2)
+
+##########
+## Motorcycle example
+##########
+# Here shash is an overkill, in fact the fit is not good, relative
+# to what we would get with mgcv::gaulss
+library(MASS)
+
+b <- gam(list(accel~s(times, k=20, bs = "ad"), ~ s(times, k = 10), ~ 1, ~ 1),
+         data=mcycle, family=shash)
+
+par(mfrow = c(1, 1))
+xSeq <- data.frame(cbind("accel" = rep(0, 1e3), "times" = seq(2, 58, length.out = 1e3)))
+pred <- predict(b, newdata = xSeq)
+plot(mcycle$times, mcycle$accel, ylim = c(-180, 100))
+for(qq in c(0.1, 0.3, 0.5, 0.7, 0.9)){
+  est <- b$family$qf(p=qq, mu = pred)
+  lines(xSeq$times, est, type = 'l', col = 2)
+}
+
+plot(b, pages = 1, scale = FALSE)
 }
 \author{
 Matteo Fasiolo <matteo.fasiolo@gmail.com> and Simon N. Wood.

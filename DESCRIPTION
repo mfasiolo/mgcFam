@@ -1,10 +1,10 @@
 Package: mgcFam
 Title: Extra Families for mgcv
-Version: 0.0.1
+Version: 0.0.2
 Authors@R: c(person("Matteo", "Fasiolo", email = "matteo.fasiolo@gmail.com", role = c("aut", "cre")),
   person("Simon", "Wood", role = c("aut")))
 Description: Extra families for mgcv.
-Depends: mgcv
+Depends: mgcv, MASS
 License: GPL-3
 Encoding: UTF-8
 LazyData: true
